@@ -6,8 +6,9 @@ pipeline {
     environment {
         // These values come from job parameters defined via the properties tag
         ENV_VARS = "${params.ENV_VARS}"
-        SSH_CREDENTIALS_ID = "${params.SSH_CREDENTIALS_ID}"
-        SERVER_B = "${params.SERVER_B}"
+        HOSTED_SERVER_SSH_CREDENTIALS_ID = "${params.HOSTED_SERVER_SSH_CREDENTIALS_ID}"
+        HOSTED_SERVER_IP = "${params.HOSTED_SERVER_IP}"
+        HOSTED_SERVER_USER = "${params.HOSTED_SERVER_USER}"
         PROJECT_NAME = "${params.PROJECT_NAME}"
     }
 
@@ -45,8 +46,8 @@ pipeline {
             steps {
                 script {
 
-                    // echo "SSH Credentials ID: ${SSH_CREDENTIALS_ID} and SERVER_B: ${SERVER_B}"
-                    echo "SERVER_B: ${SERVER_B}"
+                    // echo "SSH Credentials ID: ${HOSTED_SERVER_SSH_CREDENTIALS_ID} and HOSTED_SERVER_IP: ${HOSTED_SERVER_IP}"
+                    echo "HOSTED_SERVER_IP: ${HOSTED_SERVER_IP}"
 
                     sh '''
                         echo "Displaying contents of .env file:"
@@ -76,15 +77,18 @@ pipeline {
 
         stage('Deploy to Server') {
             steps {
-                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
+                sshagent(credentials: ["${HOSTED_SERVER_SSH_CREDENTIALS_ID}"]) {
                     script {
+                        // Create the remote directory if it doesn't exist
+                        sh "ssh ${HOSTED_SERVER_USER}@${HOSTED_SERVER_IP} 'mkdir -p ${DEPLOY_DIR}'"
+
                         // Copy the contents of the "dist" folder to the target deployment directory on Server B
                         sh """
-                            scp -r dist/* ${SERVER_B}:/var/www/${PROJECT_NAME}
+                            scp -r dist/* ${HOSTED_SERVER_USER}@${HOSTED_SERVER_IP}:/var/www/${PROJECT_NAME}
                         """
                         // Optionally, reload the web server on Server B (e.g., Nginx) to serve the new version
                         sh """
-                            ssh ${SERVER_B} 'sudo systemctl reload nginx.service'
+                            ssh ${HOSTED_SERVER_USER}@${HOSTED_SERVER_IP} 'sudo systemctl reload nginx.service'
                         """
                     }
                 }
@@ -92,7 +96,7 @@ pipeline {
                 // sshPublisher(
                 //     publishers: [
                 //         sshPublisherDesc(
-                //             configName: "${SERVER_B}",
+                //             configName: "${HOSTED_SERVER_IP}",
                 //             transfers: [
                 //                 sshTransfer(
                 //                     sourceFiles: 'dist/**/*',
