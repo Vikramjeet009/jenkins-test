@@ -6,7 +6,7 @@ pipeline {
     environment {
         // These values come from job parameters defined via the properties tag
         ENV_VARS = "${params.ENV_VARS}"
-        // SSH_CREDENTIALS_ID = "${params.SSH_CREDENTIALS_ID}"
+        SSH_CREDENTIALS_ID = "${params.SSH_CREDENTIALS_ID}"
         SERVER_B = "${params.SERVER_B}"
         PROJECT_NAME = "${params.PROJECT_NAME}"
     }
@@ -76,35 +76,35 @@ pipeline {
 
         stage('Deploy to Server') {
             steps {
-                // sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                //     script {
-                //         // Copy the contents of the "dist" folder to the target deployment directory on Server B
-                //         sh """
-                //             scp -r dist/* ${SERVER_B}:${DEPLOY_DIR}
-                //         """
-                //         // Optionally, reload the web server on Server B (e.g., Nginx) to serve the new version
-                //         sh """
-                //             ssh ${SERVER_B} 'sudo systemctl reload nginx.service'
-                //         """
-                //     }
-                // }
+                sshagent(credentials: ["${SSH_CREDENTIALS_ID}"]) {
+                    script {
+                        // Copy the contents of the "dist" folder to the target deployment directory on Server B
+                        sh """
+                            scp -r dist/* ${SERVER_B}:/var/www/${PROJECT_NAME}
+                        """
+                        // Optionally, reload the web server on Server B (e.g., Nginx) to serve the new version
+                        sh """
+                            ssh ${SERVER_B} 'sudo systemctl reload nginx.service'
+                        """
+                    }
+                }
  
-                sshPublisher(
-                    publishers: [
-                        sshPublisherDesc(
-                            configName: "${SERVER_B}",
-                            transfers: [
-                                sshTransfer(
-                                    sourceFiles: 'dist/**/*',
-                                    remoteDirectory: "/var/www/${PROJECT_NAME}",
-                                    removePrefix: 'dist'
-                                )
-                            ],
-                            usePromotionTimestamp: false,
-                            verbose: true
-                        )
-                    ]
-                )
+                // sshPublisher(
+                //     publishers: [
+                //         sshPublisherDesc(
+                //             configName: "${SERVER_B}",
+                //             transfers: [
+                //                 sshTransfer(
+                //                     sourceFiles: 'dist/**/*',
+                //                     remoteDirectory: "/var/www/${PROJECT_NAME}",
+                //                     removePrefix: 'dist'
+                //                 )
+                //             ],
+                //             usePromotionTimestamp: false,
+                //             verbose: true
+                //         )
+                //     ]
+                // )
             }
         }
 
