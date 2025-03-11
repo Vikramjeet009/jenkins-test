@@ -79,14 +79,25 @@ pipeline {
             steps {
                 sshagent(credentials: ["${HOSTED_SERVER_SSH_CREDENTIALS_ID}"]) {
                     script {
-                        // Create the remote directory if it doesn't exist
-                        sh "ssh ${HOSTED_SERVER_USER}@${HOSTED_SERVER_IP} 'mkdir -p ${DEPLOY_DIR}'"
+                        // Check if the project folder exists on the remote server; if yes, remove it; then create it.
+                        sh """
+                            ssh ${HOSTED_SERVER_USER}@${HOSTED_SERVER_IP} '
+                                if [ -d /var/www/${PROJECT_NAME} ]; then
+                                    echo "Folder /var/www/${PROJECT_NAME} exists. Removing old folder.";
+                                    rm -rf /var/www/${PROJECT_NAME};
+                                else
+                                    echo "Folder /var/www/${PROJECT_NAME} does not exist.";
+                                fi;
+                                mkdir -p /var/www/${PROJECT_NAME}
+                            '
+                        """
 
-                        // Copy the contents of the "dist" folder to the target deployment directory on Server B
+                        // Copy the contents of the "dist" folder to the target deployment directory on the remote server
                         sh """
                             scp -r dist/* ${HOSTED_SERVER_USER}@${HOSTED_SERVER_IP}:/var/www/${PROJECT_NAME}
                         """
-                        // Optionally, reload the web server on Server B (e.g., Nginx) to serve the new version
+                    
+                        // Optionally, reload the web server on remote server (e.g., Nginx) to serve the new version
                         sh """
                             ssh ${HOSTED_SERVER_USER}@${HOSTED_SERVER_IP} 'sudo systemctl reload nginx.service'
                         """
